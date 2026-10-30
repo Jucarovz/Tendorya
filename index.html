@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+    <meta http-equiv="Permissions-Policy" content="camera=(self), microphone=(), geolocation=()">
+    <meta name="theme-color" content="#173d44">
+    <title>Tendorya | Inventario</title>
+    <link rel="icon" type="image/png" href="logo-icon.png">
+    <link rel="stylesheet" href="styles.css">
+    <script src="vendor/xlsx.full.min.js" defer>
+    </script>
+    <script src="app.js" defer>
+    </script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand" href="#inventario" aria-label="Tendorya, inicio">
+          <span class="brand-logo">
+            <img src="logo-icon.png" alt="">
+          </span>
+          <span>
+            <strong>Tendorya</strong>
+            <small>CONTROL DE INVENTARIO</small>
+          </span>
+        </a>
+        <div class="side-label">GESTIÓN</div>
+        <nav class="main-nav">
+          <button class="nav-item active" type="button" data-view="inventory" aria-current="page">
+            <span class="nav-icon" aria-hidden="true">▦</span> Productos</button>
+          <button class="nav-item" type="button" data-view="movements">
+            <span class="nav-icon" aria-hidden="true">↗</span> Historial</button>
+          <button class="nav-item" type="button" data-view="monthly" aria-label="Entradas y salidas por mes">
+            <span class="nav-icon" aria-hidden="true">⇅</span> Mensual</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <span class="local-indicator" aria-hidden="true">
+          </span>
+          <span>
+            <strong>Solo este dispositivo</strong>
+            <small>Datos guardados localmente</small>
+          </span>
+        </div>
+      </aside>
+      <div class="workspace">
+        <header class="topbar">
+          <div class="breadcrumb">
+            <span>TIENDA</span>
+            <span class="crumb-separator">/</span>
+            <strong id="topbarTitle">Inventario</strong>
+          </div>
+          <div class="topbar-meta">
+            <span class="today-label" id="todayLabel">
+            </span>
+            <button class="theme-toggle" id="themeToggle" type="button" aria-label="Activar modo oscuro" title="Activar modo oscuro" aria-pressed="false">☾</button>
+            <span class="avatar" aria-hidden="true">T</span>
+          </div>
+        </header>
+        <main class="main-content">
+          <section id="inventoryView" class="view" aria-labelledby="pageTitle">
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow">CONTROL DE EXISTENCIAS</p>
+                <h1 id="pageTitle">Inventario</h1>
+                <p class="page-subtitle">Productos y cantidades de tu tienda, en un solo lugar.</p>
+              </div>
+              <div class="heading-actions">
+                <button class="button button-secondary" type="button" data-action="scan" title="Escanear código de barras">
+                  <span aria-hidden="true">▥</span>
+                  <span>Escanear</span>
+                </button>
+                <button class="button button-secondary" type="button" data-action="import">
+                  <span aria-hidden="true">↑</span>
+                  <span>Importar CSV o Excel</span>
+                </button>
+                <button class="button button-primary" type="button" data-action="add-product">
+                  <span aria-hidden="true">+</span>
+                  <span>Nuevo producto</span>
+                </button>
+              </div>
+            </div>
+            <div class="summary-grid inventory-summary" aria-label="Resumen de inventario">
+              <article class="summary-item">
+                <span class="summary-label">PRODUCTOS</span>
+                <strong class="summary-value" id="productCount">0</strong>
+                <span class="summary-note">Referencias registradas</span>
+              </article>
+              <article class="summary-item summary-alert">
+                <span class="summary-label">STOCK BAJO</span>
+                <strong class="summary-value" id="lowStockCount">0</strong>
+                <span class="summary-note">En el mínimo o por debajo</span>
+              </article>
+              <article class="summary-item">
+                <span class="summary-label">MOVIMIENTOS</span>
+                <strong class="summary-value" id="movementCount">0</strong>
+                <span class="summary-note">Registros de conteo y carga</span>
+              </article>
+                <article class="summary-item">
+                  <span class="summary-label">VALOR DEL STOCK</span>
+                  <strong class="summary-value" id="stockValue">0</strong>
+                  <span class="summary-note">A costo de compra</span>
+                </article>
+            </div>
+            <section class="inventory-section" aria-labelledby="inventoryHeading">
+              <div class="section-heading">
+                <div>
+                  <h2 id="inventoryHeading">Productos</h2>
+                  <span class="section-caption" id="resultCaption">Tu catálogo actual</span>
+                </div>
+                <div class="export-actions">
+                  <button class="text-button" type="button" data-action="export">CSV <span aria-hidden="true">↓</span></button>
+                  <button class="text-button" type="button" data-action="export-excel">Excel <span aria-hidden="true">↓</span></button>
+                </div>
+              </div>
+              <div class="filters">
+                <label class="search-field">
+                  <span class="search-icon" aria-hidden="true">⌕</span>
+                  <span class="visually-hidden">Buscar producto</span>
+                  <input id="searchInput" type="search" placeholder="Buscar por nombre, código o categoría" autocomplete="off">
+                </label>
+                <label class="filter-select">
+                  <span class="visually-hidden">Filtrar por existencia</span>
+                  <select id="stockFilter">
+                    <option value="all">Todas las existencias</option>
+                    <option value="low">Stock bajo</option>
+                    <option value="available">Con existencias</option>
+                    <option value="empty">Agotados</option>
+                  </select>
+                </label>
+              </div>
+              <div class="table-wrap" id="tableWrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>PRODUCTO</th>
+                      <th>CATEGORÍA</th>
+                      <th>EXISTENCIAS</th>
+                      <th>ESTADO</th>
+                      <th>
+                        <span class="visually-hidden">Acciones</span>
+                      </th>
+                    </tr>
+                  </thead>
+                    <tbody id="productRows">
+                  </tbody>
+                </table>
+                <div class="empty-state" id="emptyState" hidden>
+                  <span class="empty-mark" aria-hidden="true">＋</span>
+                  <h3 id="emptyTitle">Tu inventario empieza aquí</h3>
+                  <p id="emptyMessage">Añade un producto o importa un archivo CSV o Excel para comenzar.</p>
+                  <button class="button button-primary" type="button" data-action="add-product">Añadir producto</button>
+                </div>
+              </div>
+            </section>
+          </section>
+          <section id="movementsView" class="view" aria-labelledby="movementsTitle" hidden>
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow">TRAZABILIDAD</p>
+                <h1 id="movementsTitle">Historial</h1>
+                <p class="page-subtitle">Todos los movimientos y cambios de stock quedan registrados aquí.</p>
+              </div>
+              <div class="heading-actions">
+                <button class="button button-secondary" type="button" data-action="export">Exportar CSV <span aria-hidden="true">↓</span></button>
+                <button class="button button-secondary" type="button" data-action="export-excel">Exportar Excel <span aria-hidden="true">↓</span></button>
+                <button class="button button-secondary" type="button" data-action="export-pdf">Exportar PDF <span aria-hidden="true">↓</span></button>
+              </div>
+            </div>
+            <section class="inventory-section history-section" aria-label="Historial de movimientos">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>FECHA</th>
+                      <th>CONCEPTO</th>
+                      <th>TIPO</th>
+                      <th>MOTIVO</th>
+                      <th>CAMBIO</th>
+                      <th>IMPORTE</th>
+                      <th>EXISTENCIAS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="movementRows">
+                  </tbody>
+                </table>
+                <div class="empty-state" id="movementEmpty" hidden>
+                  <span class="empty-mark" aria-hidden="true">↗</span>
+                  <h3>Aún no hay movimientos</h3>
+                  <p>Los conteos, compras, ventas, entradas y salidas aparecerán aquí.</p>
+                </div>
+              </div>
+            </section>
+          </section>
+          <section id="monthlyView" class="view" aria-labelledby="monthlyTitle" hidden>
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow">RESUMEN MENSUAL</p>
+                <h1 id="monthlyTitle">Compras y ventas</h1>
+                <p class="page-subtitle">Importes del mes y valor de las existencias actuales.</p>
+              </div>
+              <div class="monthly-controls">
+                <label class="month-filter">Mes
+                  <select id="monthlyMonth" aria-label="Seleccionar mes"></select>
+                </label>
+                <label class="month-filter">País / moneda
+                  <select id="currencySelect" aria-label="Seleccionar país y moneda">
+                    <optgroup label="América">
+                      <option value="ARS">Argentina · ARS</option>
+                      <option value="BOB">Bolivia · BOB</option>
+                      <option value="BRL">Brasil · BRL</option>
+                      <option value="CAD">Canadá · CAD</option>
+                      <option value="CLP">Chile · CLP</option>
+                      <option value="COP">Colombia · COP</option>
+                      <option value="CRC">Costa Rica · CRC</option>
+                      <option value="CUP">Cuba · CUP</option>
+                      <option value="USD">Ecuador · USD</option>
+                      <option value="USD">El Salvador · USD</option>
+                      <option value="GTQ">Guatemala · GTQ</option>
+                      <option value="HNL">Honduras · HNL</option>
+                      <option value="MXN">México · MXN</option>
+                      <option value="NIO">Nicaragua · NIO</option>
+                      <option value="PAB">Panamá · PAB</option>
+                      <option value="PYG">Paraguay · PYG</option>
+                      <option value="PEN">Perú · PEN</option>
+                      <option value="DOP">República Dominicana · DOP</option>
+                      <option value="USD">Estados Unidos · USD</option>
+                      <option value="UYU">Uruguay · UYU</option>
+                      <option value="VES">Venezuela · VES</option>
+                    </optgroup>
+                    <optgroup label="Europa">
+                      <option value="ALL">Albania · ALL</option>
+                      <option value="EUR">Alemania · EUR</option>
+                      <option value="EUR">Andorra · EUR</option>
+                      <option value="EUR">Austria · EUR</option>
+                      <option value="BYN">Bielorrusia · BYN</option>
+                      <option value="EUR">Bélgica · EUR</option>
+                      <option value="BAM">Bosnia y Herzegovina · BAM</option>
+                      <option value="EUR">Bulgaria · EUR</option>
+                      <option value="EUR">Ciudad del Vaticano · EUR</option>
+                      <option value="EUR">Chipre · EUR</option>
+                      <option value="CZK">Chequia · CZK</option>
+                      <option value="EUR">Croacia · EUR</option>
+                      <option value="DKK">Dinamarca · DKK</option>
+                      <option value="EUR">Eslovaquia · EUR</option>
+                      <option value="EUR">Eslovenia · EUR</option>
+                      <option value="EUR">España · EUR</option>
+                      <option value="EUR">Estonia · EUR</option>
+                      <option value="EUR">Finlandia · EUR</option>
+                      <option value="EUR">Francia · EUR</option>
+                      <option value="EUR">Grecia · EUR</option>
+                      <option value="HUF">Hungría · HUF</option>
+                      <option value="ISK">Islandia · ISK</option>
+                      <option value="EUR">Irlanda · EUR</option>
+                      <option value="EUR">Italia · EUR</option>
+                      <option value="EUR">Kosovo · EUR</option>
+                      <option value="EUR">Letonia · EUR</option>
+                      <option value="EUR">Lituania · EUR</option>
+                      <option value="EUR">Luxemburgo · EUR</option>
+                      <option value="MKD">Macedonia del Norte · MKD</option>
+                      <option value="EUR">Malta · EUR</option>
+                      <option value="MDL">Moldavia · MDL</option>
+                      <option value="EUR">Mónaco · EUR</option>
+                      <option value="EUR">Montenegro · EUR</option>
+                      <option value="NOK">Noruega · NOK</option>
+                      <option value="EUR">Países Bajos · EUR</option>
+                      <option value="PLN">Polonia · PLN</option>
+                      <option value="EUR">Portugal · EUR</option>
+                      <option value="GBP">Reino Unido · GBP</option>
+                      <option value="RON">Rumania · RON</option>
+                      <option value="RUB">Rusia · RUB</option>
+                      <option value="RSD">Serbia · RSD</option>
+                      <option value="SEK">Suecia · SEK</option>
+                      <option value="CHF">Suiza · CHF</option>
+                      <option value="TRY">Turquía · TRY</option>
+                      <option value="UAH">Ucrania · UAH</option>
+                    </optgroup>
+                    <optgroup label="Asia">
+                      <option value="AFN">Afganistán · AFN</option>
+                      <option value="SAR">Arabia Saudita · SAR</option>
+                      <option value="AMD">Armenia · AMD</option>
+                      <option value="AZN">Azerbaiyán · AZN</option>
+                      <option value="BHD">Baréin · BHD</option>
+                      <option value="BDT">Bangladés · BDT</option>
+                      <option value="BTN">Bután · BTN</option>
+                      <option value="BND">Brunéi · BND</option>
+                      <option value="KHR">Camboya · KHR</option>
+                      <option value="CNY">China · CNY</option>
+                      <option value="KPW">Corea del Norte · KPW</option>
+                      <option value="KRW">Corea del Sur · KRW</option>
+                      <option value="AED">Emiratos Árabes Unidos · AED</option>
+                      <option value="PHP">Filipinas · PHP</option>
+                      <option value="GEL">Georgia · GEL</option>
+                      <option value="HKD">Hong Kong · HKD</option>
+                      <option value="INR">India · INR</option>
+                      <option value="IDR">Indonesia · IDR</option>
+                      <option value="IQD">Irak · IQD</option>
+                      <option value="IRR">Irán · IRR</option>
+                      <option value="ILS">Israel · ILS</option>
+                      <option value="JPY">Japón · JPY</option>
+                      <option value="JOD">Jordania · JOD</option>
+                      <option value="KZT">Kazajistán · KZT</option>
+                      <option value="KGS">Kirguistán · KGS</option>
+                      <option value="KWD">Kuwait · KWD</option>
+                      <option value="LAK">Laos · LAK</option>
+                      <option value="LBP">Líbano · LBP</option>
+                      <option value="MOP">Macao · MOP</option>
+                      <option value="MYR">Malasia · MYR</option>
+                      <option value="MVR">Maldivas · MVR</option>
+                      <option value="MNT">Mongolia · MNT</option>
+                      <option value="MMK">Myanmar · MMK</option>
+                      <option value="NPR">Nepal · NPR</option>
+                      <option value="OMR">Omán · OMR</option>
+                      <option value="PKR">Pakistán · PKR</option>
+                      <option value="ILS">Palestina · ILS</option>
+                      <option value="QAR">Catar · QAR</option>
+                      <option value="SGD">Singapur · SGD</option>
+                      <option value="LKR">Sri Lanka · LKR</option>
+                      <option value="SYP">Siria · SYP</option>
+                      <option value="TWD">Taiwán · TWD</option>
+                      <option value="TJS">Tayikistán · TJS</option>
+                      <option value="THB">Tailandia · THB</option>
+                      <option value="USD">Timor Oriental · USD</option>
+                      <option value="TMT">Turkmenistán · TMT</option>
+                      <option value="UZS">Uzbekistán · UZS</option>
+                      <option value="VND">Vietnam · VND</option>
+                      <option value="YER">Yemen · YER</option>
+                    </optgroup>
+                  </select>
+                </label>
+                <button class="button button-primary" type="button" data-action="add-cash-movement">Registrar entrada/salida</button>
+                <button class="button button-secondary" type="button" data-action="generate-invoice">Generar factura</button>
+                <button class="button button-secondary" type="button" data-action="export">Exportar CSV <span aria-hidden="true">↓</span></button>
+                <button class="button button-secondary" type="button" data-action="export-excel">Exportar Excel <span aria-hidden="true">↓</span></button>
+              </div>
+            </div>
+            <div class="summary-grid monthly-summary" aria-label="Entradas, salidas, saldo y valor del stock">
+              <article class="summary-item monthly-entry">
+                <span class="summary-label">ENTRADAS DEL MES</span>
+                <strong class="summary-value" id="monthlyEntries">0</strong>
+                <span class="summary-note" id="monthlyEntryRecords">0 entradas</span>
+              </article>
+              <article class="summary-item monthly-exit">
+                <span class="summary-label">SALIDAS DEL MES</span>
+                <strong class="summary-value" id="monthlyExits">0</strong>
+                <span class="summary-note" id="monthlyExitRecords">0 salidas</span>
+              </article>
+              <article class="summary-item">
+                <span class="summary-label">SALDO DEL MES</span>
+                <strong class="summary-value" id="monthlyBalance">0</strong>
+                <span class="summary-note">Entradas menos salidas</span>
+              </article>
+              <article class="summary-item">
+                <span class="summary-label">VALOR ACTUAL DEL STOCK</span>
+                <strong class="summary-value" id="monthlyStockValue">0</strong>
+                <span class="summary-note">Existencias × costo de compra</span>
+              </article>
+            </div>
+            <p class="monthly-disclaimer">Los ajustes de conteo no se incluyen como entradas o salidas de dinero. Cambiar la moneda solo cambia el formato; no convierte los importes.</p>
+            <section class="inventory-section history-section" aria-labelledby="monthlyDetailsHeading">
+              <div class="section-heading">
+                <div>
+                  <h2 id="monthlyDetailsHeading">Detalle del mes</h2>
+                  <span class="section-caption" id="monthlyDetailsCaption"></span>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>FECHA</th>
+                      <th>CONCEPTO</th>
+                      <th>TIPO</th>
+                      <th>CANTIDAD</th>
+                      <th>VALOR UNITARIO</th>
+                      <th>IMPORTE</th>
+                      <th>MOTIVO</th>
+                      <th><span class="visually-hidden">Acciones</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="monthlyRows"></tbody>
+                </table>
+                <div class="empty-state" id="monthlyEmpty" hidden>
+                  <span class="empty-mark" aria-hidden="true">⇅</span>
+                  <h3>Sin movimientos este mes</h3>
+                  <p>Las compras, ventas y ajustes de stock aparecerán aquí.</p>
+                </div>
+              </div>
+            </section>
+          </section>
+        </main>
+      </div>
+    </div>
+    <input id="csvFile" class="visually-hidden" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+    <div id="toast" class="toast" role="status" aria-live="polite">
+    </div>
+    <dialog id="productDialog" class="dialog">
+      <form id="productForm" method="dialog" novalidate>
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">CATÁLOGO</p>
+            <h2 id="productDialogTitle">Nuevo producto</h2>
+          </div>
+          <button class="icon-button" type="button" data-close="productDialog" aria-label="Cerrar">×</button>
+        </div>
+        <input id="productId" type="hidden">
+        <label class="field">Nombre del producto <span class="required-mark">*</span>
+          <input id="productName" name="name" type="text" maxlength="100" required autocomplete="off" placeholder="Ej. Café molido">
+        </label>
+        <div class="form-row">
+          <label class="field">Código / SKU<input id="productSku" name="sku" type="text" maxlength="40" autocomplete="off" placeholder="Opcional"></label>
+          <label class="field">Categoría<input id="productCategory" name="category" type="text" maxlength="60" autocomplete="off" placeholder="Ej. Bebidas"></label>
+        </div>
+        <label class="field">Código de barras <span class="input-with-button">
+            <input id="productBarcode" name="barcode" type="text" maxlength="80" autocomplete="off" placeholder="Escanea o escribe el código">
+            <button class="button button-small" id="scanBarcodeField" type="button" title="Usar cámara para escanear">Escanear</button>
+          </span>
+        </label>
+        <div class="form-row">
+          <label class="field">Unidad<input id="productUnit" name="unit" type="text" maxlength="20" autocomplete="off" value="unidades" required></label>
+          <label class="field">Avisar cuando queden<input id="productMinStock" name="minStock" type="number" min="0" max="1000000000" step="any" value="0" required>
+            <small>El stock actual se cambia desde “Contar”.</small>
+          </label>
+        </div>
+        <div class="form-row">
+          <label class="field">Costo de compra por unidad (<span class="currency-code">MXN</span>)<input id="productPurchasePrice" type="number" min="0" max="1000000000" step="any" value="0" required inputmode="decimal"></label>
+          <label class="field">Precio de venta por unidad (<span class="currency-code">MXN</span>)<input id="productSalePrice" type="number" min="0" max="1000000000" step="any" value="0" required inputmode="decimal"></label>
+        </div>
+        <p class="form-error" id="productError" role="alert">
+        </p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-close="productDialog">Cancelar</button>
+          <button class="button button-primary" type="submit">Guardar producto</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="deleteProductDialog" class="dialog dialog-compact">
+      <form id="deleteProductForm" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">ELIMINAR DEL CATÁLOGO</p>
+            <h2>¿Eliminar producto?</h2>
+          </div>
+          <button class="icon-button" type="button" data-close="deleteProductDialog" aria-label="Cerrar">×</button>
+        </div>
+        <p>Se eliminará <strong id="deleteProductName"></strong> del catálogo. Sus movimientos anteriores se conservarán en el historial.</p>
+        <input id="deleteProductId" type="hidden">
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-close="deleteProductDialog">Cancelar</button>
+          <button class="button button-danger" type="submit">Eliminar producto</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="deleteMonthlyMovementDialog" class="dialog dialog-compact">
+      <form id="deleteMonthlyMovementForm" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">HISTORIAL</p>
+            <h2>¿Eliminar movimiento?</h2>
+          </div>
+          <button class="icon-button" type="button" data-close="deleteMonthlyMovementDialog" aria-label="Cerrar">×</button>
+        </div>
+        <p>Se ocultará el movimiento de <strong id="deleteMonthlyMovementName"></strong> de la tabla Mensual. Se conservará en Historial y el stock actual no cambiará.</p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-close="deleteMonthlyMovementDialog">Cancelar</button>
+          <button class="button button-danger" type="submit">Eliminar movimiento</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="stockMovementDialog" class="dialog dialog-compact">
+      <form id="stockMovementForm" method="dialog" novalidate>
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">MOVIMIENTO DE STOCK</p>
+            <h2 id="stockMovementProduct">Producto</h2>
+          </div>
+          <button class="icon-button" type="button" data-close="stockMovementDialog" aria-label="Cerrar">×</button>
+        </div>
+        <p class="current-stock">Existencias actuales: <strong id="stockMovementCurrent"></strong></p>
+        <input id="stockMovementProductId" type="hidden">
+        <label class="field">Operación
+          <select id="stockMovementType" class="form-select">
+            <option value="purchase">Compra · entrada de mercancía</option>
+            <option value="sale">Venta · salida de mercancía</option>
+          </select>
+        </label>
+        <label class="field">Cantidad <span class="required-mark">*</span>
+          <input id="stockMovementQuantity" type="number" min="0.001" max="1000000000" step="any" required inputmode="decimal" value="1">
+        </label>
+        <label class="field">Precio por <span id="stockMovementPriceUnit">unidad</span> (<span class="currency-code">MXN</span>) <span class="required-mark">*</span>
+          <input id="stockMovementUnitPrice" type="number" min="0" max="1000000000" step="any" required inputmode="decimal">
+        </label>
+        <label class="field">Nota (opcional)
+          <input id="stockMovementNote" type="text" maxlength="120" placeholder="Ej. Factura o referencia">
+        </label>
+        <p class="form-error" id="stockMovementError" role="alert"></p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-close="stockMovementDialog">Cancelar</button>
+          <button class="button button-primary" type="submit">Guardar movimiento</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="cashMovementDialog" class="dialog dialog-compact">
+      <form id="cashMovementForm" method="dialog" novalidate>
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">MOVIMIENTO DE DINERO</p>
+            <h2>Entrada o salida</h2>
+          </div>
+          <button class="icon-button" type="button" data-close="cashMovementDialog" aria-label="Cerrar">×</button>
+        </div>
+        <label class="field">Nombre o concepto <span class="required-mark">*</span>
+          <input id="cashMovementName" type="text" maxlength="100" required autocomplete="off" placeholder="Ej. Pago de servicio">
+        </label>
+        <label class="field">Tipo
+          <select id="cashMovementType" class="form-select">
+            <option value="entry">Entrada</option>
+            <option value="exit">Salida</option>
+          </select>
+        </label>
+        <label class="field">Fecha y hora <span class="required-mark">*</span>
+          <input id="cashMovementDate" type="datetime-local" required>
+        </label>
+        <div class="form-row">
+          <label class="field">Cantidad (opcional)
+            <input id="cashMovementQuantity" type="number" min="0.001" max="1000000000" step="any" inputmode="decimal" placeholder="—">
+          </label>
+          <label class="field">Unidad (opcional)
+            <input id="cashMovementUnit" type="text" maxlength="20" placeholder="Ej. unidades">
+          </label>
+        </div>
+        <div class="form-row">
+          <label class="field">Valor unitario (<span class="currency-code">MXN</span>, opcional)
+            <input id="cashMovementUnitPrice" type="number" min="0" max="1000000000" step="any" inputmode="decimal" placeholder="—">
+          </label>
+          <label class="field">Importe (<span class="currency-code">MXN</span>) <span class="required-mark">*</span>
+          <input id="cashMovementAmount" type="number" min="0.01" max="1000000000" step="any" required inputmode="decimal" placeholder="0.00">
+          </label>
+        </div>
+        <label class="field">Motivo (opcional)
+          <input id="cashMovementReason" type="text" maxlength="120" placeholder="Ej. Pago de servicio">
+        </label>
+        <p class="form-error" id="cashMovementError" role="alert"></p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-close="cashMovementDialog">Cancelar</button>
+          <button class="button button-primary" type="submit">Guardar movimiento</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="countDialog" class="dialog dialog-compact">
+      <form id="countForm" method="dialog" novalidate>
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">CONTEO FÍSICO</p>
+            <h2 id="countProductName">Producto</h2>
+          </div>
+          <button class="icon-button" type="button" data-close="countDialog" aria-label="Cerrar">×</button>
+        </div>
+        <p class="current-stock">Existencias registradas: <strong id="currentStock">
+          </strong>
+        </p>
+        <input id="countProductId" type="hidden">
+        <label class="field">Cantidad contada <span class="required-mark">*</span>
+          <input id="countQuantity" type="number" min="0" max="1000000000" step="any" required inputmode="decimal">
+        </label>
+        <label class="field">Motivo del ajuste<input id="countReason" type="text" maxlength="120" value="Conteo físico" required>
+        </label>
+        <p class="form-error" id="countError" role="alert">
+        </p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-close="countDialog">Cancelar</button>
+          <button class="button button-primary" type="submit">Confirmar conteo</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="invoiceDialog" class="dialog invoice-dialog">
+      <section class="invoice-document" aria-labelledby="invoiceTitle">
+        <header class="invoice-header">
+          <div class="invoice-brand"><img src="logo-icon.png" alt=""><div><strong>Tendorya</strong><span>Control de inventario</span></div></div>
+          <div class="invoice-heading"><h2 id="invoiceTitle">Resumen mensual</h2><p id="invoiceMonth"></p></div>
+        </header>
+        <p class="invoice-note">Documento de control interno. No sustituye una factura fiscal.</p>
+        <table class="invoice-table">
+          <thead><tr><th>FECHA</th><th>CONCEPTO</th><th>TIPO</th><th>VALOR</th></tr></thead>
+          <tbody id="invoiceRows"></tbody>
+        </table>
+        <div class="invoice-totals">
+          <div><span>Total de entradas</span><strong id="invoiceEntries"></strong></div>
+          <div><span>Total de salidas</span><strong id="invoiceExits"></strong></div>
+          <div class="invoice-balance"><span>Saldo del mes</span><strong id="invoiceBalance"></strong></div>
+          <div><span>Valor actual del stock</span><strong id="invoiceStockValue"></strong></div>
+        </div>
+      </section>
+      <div class="dialog-actions invoice-actions">
+        <button class="button button-secondary" type="button" data-close="invoiceDialog">Cerrar</button>
+        <button class="button button-primary" type="button" data-action="print-invoice">Imprimir / Guardar PDF</button>
+      </div>
+    </dialog>
+    <dialog id="importDialog" class="dialog dialog-compact">
+      <form id="importForm" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">IMPORTACIÓN</p>
+            <h2>Revisar archivo</h2>
+          </div>
+          <button class="icon-button" type="button" data-close="importDialog" aria-label="Cerrar">×</button>
+        </div>
+        <p class="import-summary" id="importSummary">
+        </p>
+        <ul class="import-errors" id="importErrors">
+        </ul>
+        <p class="privacy-note">La importación solo añade productos nuevos. No reemplaza existencias existentes.</p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-close="importDialog">Cancelar</button>
+          <button class="button button-primary" id="confirmImport" type="submit">Importar productos</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="scannerDialog" class="dialog dialog-compact scanner-dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">LECTOR</p>
+          <h2>Escanear código</h2>
+        </div>
+        <button class="icon-button" type="button" data-close="scannerDialog" aria-label="Cerrar">×</button>
+      </div>
+      <div class="scanner-frame">
+        <video id="scannerVideo" muted playsinline aria-label="Vista de la cámara">
+        </video>
+        <span id="scannerPlaceholder">La cámara solo se activa al iniciar el escaneo.</span>
+      </div>
+      <p id="scannerMessage" class="scanner-message">Puedes escribir el código si tu navegador no admite lectura con cámara.</p>
+      <form id="scannerForm" method="dialog">
+        <label class="field">Código de barras<input id="scannerCode" type="text" maxlength="80" autocomplete="off" placeholder="Escribe o pega el código">
+        </label>
+        <div class="dialog-actions">
+          <button class="button button-secondary" type="button" data-action="start-camera">Activar cámara</button>
+          <button class="button button-primary" type="submit">Usar código</button>
+        </div>
+      </form>
+    </dialog>
+    <noscript>Esta aplicación necesita JavaScript para gestionar el inventario.</noscript>
+  </body>
+</html>

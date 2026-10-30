@@ -22,5 +22,5 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline-color:#ed8
 .button-primary{background:var(--coral)}
 .button-primary:hover{background:var(--coral-deep)}
 .brand-logo{width:48px;height:48px;flex:0 0 auto;overflow:hidden;border:1px solid #fff9f2;border-radius:5px;background:#fff}
-.brand-logo img{position:relative;top:-26px;display:block;width:48px;height:auto;max-width:none}
-@media(max-width:650px){.brand-logo{width:42px;height:42px}.brand-logo img{top:-27px;width:42px}}
+.brand-logo img{display:block;width:100%;height:100%;object-fit:contain}
+@media(max-width:650px){.brand-logo{width:42px;height:42px}}
